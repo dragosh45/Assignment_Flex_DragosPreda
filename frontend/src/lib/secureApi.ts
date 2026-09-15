@@ -12,6 +12,7 @@
 import { supabase } from './supabase';
 import { sessionManager } from '../utils/sessionManager';
 import { withRetry, handleApiError, classifyError } from '../utils/apiErrorHandler';
+import { decodeJWTPayload } from '../utils/jwtUtils';
 
 // Get backend URL with fallback for misconfigured production environments
 const getBackendUrl = () => {
@@ -185,8 +186,8 @@ export class SecureAPIClient {
         }
         // Check if it's a valid JWT
         else if (token.includes('.') && token.split('.').length === 3) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          extractedTenantId = payload.user_metadata?.tenant_id || payload.tenant_id;
+          const payload = decodeJWTPayload(token);
+          extractedTenantId = payload?.app_metadata?.tenant_id || payload?.tenant_id;
         }
 
         if (extractedTenantId) {
@@ -243,9 +244,9 @@ export class SecureAPIClient {
    * Validate tenant ID format for security
    */
   private isValidTenantId(tenantId: string): boolean {
-    // Check for UUID format (basic validation)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return typeof tenantId === 'string' && tenantId.length > 0 && uuidRegex.test(tenantId);
+    // The database uses TEXT IDs, including tenant-a and tenant-b.
+    // This partitions the cache; the backend enforces authorization.
+    return typeof tenantId === 'string' && tenantId.trim().length > 0;
   }
 
   /**
@@ -1450,22 +1451,21 @@ export class SecureAPIClient {
 
   // ============= DASHBOARD API =============
   /**
-   * Get dashboard summary with optional simulation header
+   * Get dashboard summary for the authenticated tenant and reporting period.
    */
-  async getDashboardSummary(propertyId: string, options?: { simulatedTenant?: string, timestamp?: number }) {
+  async getDashboardSummary(propertyId: string, options?: { month?: number, year?: number }) {
     const queryParams = new URLSearchParams({ property_id: propertyId });
-    if (options?.timestamp) {
-      queryParams.append('_t', options.timestamp.toString());
+    if (options?.month) {
+      queryParams.set('month', String(options.month));
     }
-
-    const requestOptions: RequestInit = {};
-    if (options?.simulatedTenant) {
-      requestOptions.headers = {
-        'X-Simulated-Tenant': options.simulatedTenant
-      };
+    if (options?.year) {
+      queryParams.set('year', String(options.year));
     }
+    return this.request<any>(`/api/v1/dashboard/summary?${queryParams}`);
+  }
 
-    return this.request<any>(`/api/v1/dashboard/summary?${queryParams}`, requestOptions);
+  async getDashboardProperties(): Promise<Array<{ id: string; name: string; timezone: string }>> {
+    return this.request('/api/v1/dashboard/properties');
   }
 
   async uploadCompanyLogo(logo_url: string) {

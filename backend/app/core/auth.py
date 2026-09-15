@@ -83,7 +83,8 @@ async def authenticate_request(
     # Check cache first
     if token_hash in auth_cache:
         cached_data = auth_cache[token_hash]
-        if datetime.now().timestamp() - cached_data["timestamp"] < CACHE_DURATION:
+        if (datetime.now().timestamp() - cached_data["timestamp"] < CACHE_DURATION
+                and datetime.now().timestamp() < cached_data.get("expires_at", 0)):
             cached_user = cached_data["user"]
             # If not, force a refresh to get proper tenant isolation
             if not cached_user.tenant_id:
@@ -281,6 +282,7 @@ async def authenticate_request(
         auth_cache[token_hash] = {
             "user": auth_user,
             "timestamp": datetime.now().timestamp(),
+            "expires_at": jwt.get_unverified_claims(token).get("exp", 0),
         }
 
         # Clean up old cache entries (keep cache size manageable)
