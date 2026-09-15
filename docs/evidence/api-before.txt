@@ -1,9 +1,0 @@
-Sunset: login successful (tenant-a)
-Ocean: login successful (tenant-b)
-Sunset | 2024-03 | HTTP 200 | total=1000.0 | bookings=3
-Ocean | 2024-03 | HTTP 200 | total=1000.0 | bookings=3
-Sunset | 2024-03 | HTTP 200 | total=1000.0 | bookings=3
-Ocean | 2024-03 | HTTP 200 | total=1000.0 | bookings=3
-Sunset | 2024-02 | HTTP 200 | total=1000.0 | bookings=3
-Sunset | 2024-03 | HTTP 200 | total=1000.0 | bookings=3
-Original behavior recorded; no assertions requested.
