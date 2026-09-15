@@ -1,0 +1,15 @@
+Sunset: login successful (tenant-a)
+Ocean: login successful (tenant-b)
+Sunset | 2024-03 | HTTP 200 | total='2250.00' | bookings=4
+Ocean | 2024-03 | HTTP 200 | total='0.00' | bookings=0
+Sunset | 2024-03 | HTTP 200 | total='2250.00' | bookings=4
+Ocean | 2024-03 | HTTP 200 | total='0.00' | bookings=0
+Sunset | 2024-02 | HTTP 200 | total='0.00' | bookings=0
+Sunset | 2024-03 | HTTP 200 | total='2250.00' | bookings=4
+Sunset property list: ['prop-001', 'prop-002', 'prop-003']
+Ocean property list: ['prop-001', 'prop-004', 'prop-005']
+Other tenant's property: HTTP 404 (expected 404)
+No login: HTTP 401 (expected 401)
+Invalid month: HTTP 422 (expected 422)
+Month without year: HTTP 422 (expected 422)
+PASS: both client accounts, repeat requests, month filtering, property isolation, and validation.

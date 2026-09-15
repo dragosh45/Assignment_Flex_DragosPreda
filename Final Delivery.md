@@ -6,6 +6,23 @@ Record a **6–8 minute Loom screen recording** of the existing app, the relevan
 
 Read this once and rehearse the steps before recording. Use the suggested words as a guide, and explain them in your own words. Describe results you have actually run and observed.
 
+## Verified results
+
+The original backend and the fixed backend were run separately with the supplied client credentials. The sample database was left intact.
+
+| Check | Original backend | Fixed backend |
+| --- | --- | --- |
+| Sunset, prop-001, March 2024 | 1000.0 / 3 bookings | 2250.00 / 4 bookings |
+| Ocean, prop-001, March 2024 | 1000.0 / 3 bookings | 0.00 / 0 bookings |
+| Sunset, prop-001, February 2024 | 1000.0 / 3 bookings | 0.00 / 0 bookings |
+| Ocean requests Sunset-only prop-002 | No ownership validation | HTTP 404 |
+| Cache isolation regression on original code | Fails: tenant-a returned to tenant-b | Passes |
+| Automated tests, including real PostgreSQL | — | 23 passed, none skipped |
+
+Recorded evidence: [original API](docs/evidence/api-before.txt), [fixed API](docs/evidence/api-after.txt), [original cache failure](docs/evidence/cache-before.txt), and [test results](docs/evidence/tests.txt).
+
+The rounding cases use controlled regression fixtures. They are not claimed to be visible in every seeded dashboard total.
+
 ## Preparation
 
 1. Open this repository in your editor.
@@ -198,3 +215,44 @@ The database tests insert boundary and currency fixtures inside transactions and
 - [ ] Submit the fork URL and Loom URL using the employer's requested channel.
 
 The time limit starts when the email was sent, not when this repository was cloned. The actual email deadline and submission channel were not provided here.
+
+## Additional fixes to know about
+
+These are supporting corrections in the existing reporting and authentication code; keep the main video focused on the three reported problems.
+
+- **Authentication:** unknown users previously defaulted to Sunset's tenant. The fallback accepted a static token or decoded token without verifying its signature; the legacy login path checked whether an account existed without checking its password. The corrected paths validate credentials and signed claims, reject a missing tenant, and respect token expiry when using the auth cache. The API tests cover wrong passwords, forged/expired/static tokens, missing tenants, and user-editable metadata trying to override the tenant.
+- **Browser cache context:** the client cache ignored `app_metadata.tenant_id` and expected UUIDs, but the sample IDs are text such as `tenant-a`. It now reads the supplied tenant claims and accepts the database's text IDs for cache partitioning. The backend remains responsible for authorization.
+- **Outdated requests:** the revenue component clears old data and ignores results after it unmounts or its selection changes. Switching users resets the dashboard's selections.
+- **Display accuracy:** the fake hard-coded 12% trend indicator was removed. There is no data supporting that figure.
+- **Frontend install:** the supplied lockfile needs legacy peer-dependency handling. The Docker build now installs the recorded versions with `npm ci --legacy-peer-deps --ignore-scripts`.
+
+## Local development alternative
+
+If the first Docker image downloads are slow, the same app can run directly while PostgreSQL and Redis stay in Docker:
+
+```bash
+docker compose up -d db redis
+```
+
+In a terminal at the repository root, after installing `backend/requirements.txt` into `.venv`:
+
+```bash
+cd backend
+DEBUG=false DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/propertyflow REDIS_URL=redis://127.0.0.1:6380/0 ../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+In another terminal:
+
+```bash
+cd frontend
+npm ci --legacy-peer-deps --ignore-scripts
+npm run dev -- --host 127.0.0.1 --port 3000
+```
+
+Use one startup method at a time so two processes do not compete for the same ports.
+
+For local tests from `backend/`:
+
+```bash
+DEBUG=false TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/propertyflow ../.venv/bin/python -m unittest discover -s tests -v
+```
